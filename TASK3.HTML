@@ -1,0 +1,1239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TaskFlow - Project Management Tool</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #6366f1;
+            --secondary: #4f46e5;
+            --dark: #1e293b;
+            --light: #f8fafc;
+        }
+        
+        .board {
+            scrollbar-width: thin;
+            scrollbar-color: var(--primary) transparent;
+        }
+        
+        .board::-webkit-scrollbar {
+            height: 8px;
+        }
+        
+        .board::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        
+        .board::-webkit-scrollbar-thumb {
+            background-color: var(--primary);
+            border-radius: 10px;
+        }
+        
+        .task-card {
+            transition: all 0.2s ease;
+        }
+        
+        .task-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        
+        .comment-input:focus {
+            outline: none;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .animate-fadeIn {
+            animation: fadeIn 0.3s ease forwards;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <!-- Auth Screens -->
+    <div id="auth-container" class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900 bg-opacity-50 transition-opacity duration-300">
+        <div class="bg-white rounded-lg shadow-xl p-8 w-full max-w-md animate-fadeIn">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold text-gray-800" id="auth-title">Login</h2>
+                <button id="auth-close" class="text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <form id="auth-form" class="space-y-4">
+                <div id="auth-name-group" class="hidden">
+                    <label class="block text-sm font-medium text-gray-700">Full Name</label>
+                    <input type="text" id="auth-name" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-2 border">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Email</label>
+                    <input type="email" id="auth-email" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-2 border">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Password</label>
+                    <input type="password" id="auth-password" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-2 border">
+                </div>
+                
+                <div id="auth-confirm-group" class="hidden">
+                    <label class="block text-sm font-medium text-gray-700">Confirm Password</label>
+                    <input type="password" id="auth-confirm" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-2 border">
+                </div>
+                
+                <button type="submit" id="auth-submit" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                    Login
+                </button>
+                
+                <p class="text-center text-sm text-gray-600">
+                    <span id="auth-switch-text">Don't have an account?</span>
+                    <button type="button" id="auth-switch" class="font-medium text-indigo-600 hover:text-indigo-500 ml-1">
+                        Sign up
+                    </button>
+                </p>
+            </form>
+        </div>
+    </div>
+
+    <!-- Main App Layout -->
+    <div class="flex flex-col h-screen" id="app-container">
+        <!-- Header -->
+        <header class="bg-white shadow-sm border-b border-gray-200">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between items-center py-4">
+                    <div class="flex items-center">
+                        <img src="https://placehold.co/40x40" alt="TaskFlow logo - a blue kanban board icon with white lines representing tasks" class="h-8 w-8 rounded-md">
+                        <h1 class="ml-3 text-xl font-semibold text-gray-900">TaskFlow</h1>
+                    </div>
+                    
+                    <div class="flex items-center space-x-4">
+                        <div class="relative" id="notifications">
+                            <button class="text-gray-500 hover:text-gray-700 focus:outline-none">
+                                <i class="fas fa-bell"></i>
+                                <span class="absolute top-0 right-0 block h-2 w-2 rounded-full bg-red-500 ring-2 ring-white"></span>
+                            </button>
+                        </div>
+                        
+                        <div class="relative" id="user-menu">
+                            <button id="user-menu-button" class="flex items-center space-x-2 focus:outline-none">
+                                <img src="https://placehold.co/32x32" alt="User profile picture - portrait of a professional in a business setting" class="h-8 w-8 rounded-full">
+                                <span id="user-name" class="text-sm font-medium text-gray-700">Guest</span>
+                            </button>
+                        </div>
+                        
+                        <button id="logout-button" class="hidden text-sm font-medium text-gray-500 hover:text-gray-700">
+                            <i class="fas fa-sign-out-alt"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="flex-1 overflow-hidden bg-gray-50">
+            <!-- Projects Sidebar -->
+            <div class="fixed inset-y-0 left-0 w-64 bg-white border-r border-gray-200 transform -translate-x-full md:translate-x-0 transition-transform duration-300 ease-in-out z-40" id="sidebar">
+                <div class="flex flex-col h-full">
+                    <div class="p-4 border-b border-gray-200">
+                        <h2 class="text-lg font-semibold text-gray-900">Projects</h2>
+                    </div>
+                    
+                    <div class="flex-1 overflow-y-auto">
+                        <nav class="space-y-1 px-2 py-4">
+                            <ul id="projects-list">
+                                <!-- Projects will be added here dynamically -->
+                                <li class="text-center py-4 text-gray-500">No projects yet</li>
+                            </ul>
+                        </nav>
+                    </div>
+                    
+                    <div class="p-4 border-t border-gray-200">
+                        <button id="new-project-button" class="w-full flex items-center justify-center px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-md">
+                            <i class="fas fa-plus mr-2"></i> New Project
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Mobile Sidebar Toggle -->
+            <button id="sidebar-toggle" class="fixed bottom-4 left-4 bg-white p-3 rounded-full shadow-lg md:hidden z-50">
+                <i class="fas fa-bars text-gray-700"></i>
+            </button>
+
+            <!-- Project Board -->
+            <div class="pl-0 md:pl-64 h-full">
+                <!-- Project Header -->
+                <div class="bg-white border-b border-gray-200 p-4">
+                    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <h2 id="current-project-name" class="text-xl font-semibold text-gray-900">Select a project</h2>
+                                <p id="current-project-description" class="text-sm text-gray-500"></p>
+                            </div>
+                            <div class="flex space-x-3">
+                                <button id="invite-button" class="hidden px-4 py-2 bg-green-50 text-green-700 text-sm font-medium rounded-md hover:bg-green-100">
+                                    <i class="fas fa-user-plus mr-2"></i> Invite Team
+                                </button>
+                                <button id="settings-button" class="hidden px-4 py-2 bg-gray-50 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-100">
+                                    <i class="fas fa-cog mr-2"></i> Settings
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Board Content -->
+                <div class="flex-1 overflow-x-auto p-4 h-[calc(100%-72px)]" id="board-container">
+                    <div class="max-w-7xl mx-auto px-0">
+                        <div class="flex items-start space-x-4 h-full" id="board-columns">
+                            <!-- Empty State -->
+                            <div id="empty-state" class="flex flex-col items-center justify-center h-full w-full py-12">
+                                <img src="https://placehold.co/400x300" alt="Empty project board illustration showing a clipboard with no tasks" class="mb-4 rounded-lg">
+                                <h3 class="text-lg font-medium text-gray-900">No project selected</h3>
+                                <p class="text-sm text-gray-500 mt-1">Select a project from the sidebar or create a new one to get started</p>
+                                <button id="create-first-project" class="mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none">
+                                    Create Project
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modals -->
+    <div id="project-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900 bg-opacity-50 hidden">
+        <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-medium text-gray-900">New Project</h3>
+                <button id="project-modal-close" class="text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <form id="project-form" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Project Name</label>
+                    <input type="text" id="project-name" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-2 border" required>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Description</label>
+                    <textarea id="project-description" rows="3" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-2 border"></textarea>
+                </div>
+                
+                <div>
+                    <div class="flex items-center">
+                        <input type="checkbox" id="project-team" class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
+                        <label for="project-team" class="ml-2 block text-sm text-gray-700">Team Project</label>
+                    </div>
+                </div>
+                
+                <div id="project-team-members" class="hidden space-y-2">
+                    <label class="block text-sm font-medium text-gray-700">Team Members</label>
+                    <div class="flex space-x-2">
+                        <input type="email" id="team-member-email" placeholder="Enter email" class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-2 border">
+                        <button type="button" id="add-member-button" class="px-3 py-1 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700">
+                            Add
+                        </button>
+                    </div>
+                    <div id="team-members-list" class="py-2"></div>
+                </div>
+                
+                <div class="flex justify-end space-x-3">
+                    <button type="button" id="project-cancel" class="px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                        Cancel
+                    </button>
+                    <button type="submit" id="project-submit" class="px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700">
+                        Create
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="task-modal" class="fixed inset-0 z-50 flex items-start justify-center bg-gray-900 bg-opacity-50 overflow-y-auto hidden py-10">
+        <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-2xl my-8">
+            <div class="flex justify-between items-start mb-4">
+                <div class="flex items-center space-x-3">
+                    <div id="task-status-badge" class="px-2 py-1 text-xs font-medium rounded-full"></div>
+                    <h3 class="text-xl font-medium text-gray-900" id="task-modal-title">Task Details</h3>
+                </div>
+                <button id="task-modal-close" class="text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <div class="flex flex-col md:flex-row gap-6">
+                <!-- Main Content -->
+                <div class="flex-1">
+                    <div class="mb-6">
+                        <input type="text" id="task-title" class="w-full text-xl font-semibold border-none focus:ring-2 focus:ring-indigo-500 rounded-md" value="Task Title">
+                    </div>
+                    
+                    <div class="mb-6">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Description</label>
+                        <textarea id="task-description" rows="4" class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-2 border"></textarea>
+                    </div>
+                    
+                    <!-- Comments Section -->
+                    <div class="mb-6">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Comments</label>
+                        <div id="comments-container" class="space-y-3 mb-4">
+                            <!-- Comments will be added here -->
+                        </div>
+                        
+                        <div class="flex space-x-2">
+                            <img src="https://placehold.co/32x32" alt="Current user's small profile picture" class="h-8 w-8 rounded-full mt-1">
+                            <div class="flex-1 relative">
+                                <input type="text" id="comment-input" placeholder="Add a comment..." class="w-full rounded-full border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-2 border">
+                                <button id="comment-submit" class="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-indigo-500">
+                                    <i class="fas fa-paper-plane"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Sidebar -->
+                <div class="w-full md:w-64 space-y-6">
+                    <!-- Status -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Status</label>
+                        <select id="task-status" class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 py-2 pl-3 pr-10 text-sm border">
+                            <option value="todo">To Do</option>
+                            <option value="in-progress">In Progress</option>
+                            <option value="review">Review</option>
+                            <option value="done">Done</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Due Date -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Due Date</label>
+                        <input type="date" id="task-due-date" class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 py-2 px-3 text-sm border">
+                    </div>
+                    
+                    <!-- Assignee -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Assigned To</label>
+                        <div class="flex items-center space-x-2">
+                            <div class="relative">
+                                <input type="text" id="task-assignee-search" placeholder="Search members..." class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 py-2 px-3 text-sm border">
+                                <div id="assignee-results" class="absolute z-10 mt-1 w-full bg-white shadow-lg rounded-md py-1 text-base ring-1 ring-black ring-opacity-5 hidden"></div>
+                            </div>
+                        </div>
+                        <div id="current-assignee" class="flex items-center space-x-2 mt-2 p-2 bg-gray-50 rounded-md hidden">
+                            <img src="https://placehold.co/32x32" alt="Assignee's profile picture" class="h-6 w-6 rounded-full" id="assignee-avatar">
+                            <span id="assignee-name" class="text-sm"></span>
+                        </div>
+                    </div>
+                    
+                    <!-- Labels -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Labels</label>
+                        <div class="flex flex-wrap gap-2" id="task-labels">
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-indigo-100 text-indigo-800">Frontend</span>
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">Feature</span>
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">Priority</span>
+                        </div>
+                        <div class="mt-2">
+                            <input type="text" id="new-label-input" placeholder="Add label..." class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 py-2 px-3 text-sm border">
+                        </div>
+                    </div>
+                    
+                    <!-- Actions -->
+                    <div class="space-y-2">
+                        <button id="save-task-button" class="w-full px-3 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700">
+                            Save Changes
+                        </button>
+                        <button id="delete-task-button" class="w-full px-3 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50">
+                            Delete Task
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Invite Modal -->
+    <div id="invite-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900 bg-opacity-50 hidden">
+        <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-medium text-gray-900">Invite Team Members</h3>
+                <button id="invite-modal-close" class="text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <form id="invite-form" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Email Addresses</label>
+                    <textarea id="invite-emails" rows="3" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-2 border" placeholder="Enter email addresses separated by commas"></textarea>
+                </div>
+                
+                <div class="flex justify-end space-x-3">
+                    <button type="button" id="invite-cancel" class="px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                        Cancel
+                    </button>
+                    <button type="submit" id="invite-submit" class="px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700">
+                        Send Invites
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed bottom-4 right-4 px-4 py-2 rounded-md shadow-lg bg-gray-800 text-white hidden flex items-center">
+        <span id="toast-message"></span>
+        <button id="toast-close" class="ml-3 text-gray-300 hover:text-white">
+            <i class="fas fa-times"></i>
+        </button>
+    </div>
+
+    <script>
+        // App State
+        const state = {
+            currentUser: null,
+            projects: [],
+            currentProject: null,
+            currentTask: null,
+            users: [],
+            isLoggingIn: true
+        };
+
+        // DOM Elements
+        const elements = {
+            authContainer: document.getElementById('auth-container'),
+            authTitle: document.getElementById('auth-title'),
+            authForm: document.getElementById('auth-form'),
+            authNameGroup: document.getElementById('auth-name-group'),
+            authName: document.getElementById('auth-name'),
+            authEmail: document.getElementById('auth-email'),
+            authPassword: document.getElementById('auth-password'),
+            authConfirmGroup: document.getElementById('auth-confirm-group'),
+            authConfirm: document.getElementById('auth-confirm'),
+            authSubmit: document.getElementById('auth-submit'),
+            authSwitchText: document.getElementById('auth-switch-text'),
+            authSwitch: document.getElementById('auth-switch'),
+            authClose: document.getElementById('auth-close'),
+            
+            appContainer: document.getElementById('app-container'),
+            userName: document.getElementById('user-name'),
+            logoutButton: document.getElementById('logout-button'),
+            
+            sidebar: document.getElementById('sidebar'),
+            sidebarToggle: document.getElementById('sidebar-toggle'),
+            
+            projectsList: document.getElementById('projects-list'),
+            newProjectButton: document.getElementById('new-project-button'),
+            
+            boardContainer: document.getElementById('board-container'),
+            boardColumns: document.getElementById('board-columns'),
+            emptyState: document.getElementById('empty-state'),
+            createFirstProject: document.getElementById('create-first-project'),
+            
+            currentProjectName: document.getElementById('current-project-name'),
+            currentProjectDescription: document.getElementById('current-project-description'),
+            inviteButton: document.getElementById('invite-button'),
+            settingsButton: document.getElementById('settings-button'),
+            
+            projectModal: document.getElementById('project-modal'),
+            projectForm: document.getElementById('project-form'),
+            projectName: document.getElementById('project-name'),
+            projectDescription: document.getElementById('project-description'),
+            projectTeam: document.getElementById('project-team'),
+            projectTeamMembers: document.getElementById('project-team-members'),
+            teamMemberEmail: document.getElementById('team-member-email'),
+            addMemberButton: document.getElementById('add-member-button'),
+            teamMembersList: document.getElementById('team-members-list'),
+            projectModalClose: document.getElementById('project-modal-close'),
+            projectCancel: document.getElementById('project-cancel'),
+            projectSubmit: document.getElementById('project-submit'),
+            
+            taskModal: document.getElementById('task-modal'),
+            taskModalTitle: document.getElementById('task-modal-title'),
+            taskTitle: document.getElementById('task-title'),
+            taskDescription: document.getElementById('task-description'),
+            taskStatus: document.getElementById('task-status'),
+            taskDueDate: document.getElementById('task-due-date'),
+            taskAssigneeSearch: document.getElementById('task-assignee-search'),
+            assigneeResults: document.getElementById('assignee-results'),
+            currentAssignee: document.getElementById('current-assignee'),
+            taskLabels: document.getElementById('task-labels'),
+            newLabelInput: document.getElementById('new-label-input'),
+            commentsContainer: document.getElementById('comments-container'),
+            commentInput: document.getElementById('comment-input'),
+            commentSubmit: document.getElementById('comment-submit'),
+            saveTaskButton: document.getElementById('save-task-button'),
+            deleteTaskButton: document.getElementById('delete-task-button'),
+            taskStatusBadge: document.getElementById('task-status-badge'),
+            taskModalClose: document.getElementById('task-modal-close'),
+            
+            inviteModal: document.getElementById('invite-modal'),
+            inviteForm: document.getElementById('invite-form'),
+            inviteModalClose: document.getElementById('invite-modal-close'),
+            
+            toast: document.getElementById('toast'),
+            toastMessage: document.getElementById('toast-message'),
+            toastClose: document.getElementById('toast-close')
+        };
+
+        // Initialize the app
+        document.addEventListener('DOMContentLoaded', () => {
+            loadData();
+            setupEventListeners();
+            
+            // Show auth screen if no user is logged in
+            if (!state.currentUser) {
+                showAuthModal();
+            } else {
+                elements.appContainer.classList.remove('hidden');
+            }
+        });
+
+        // Load initial data from localStorage
+        function loadData() {
+            const storedUser = localStorage.getItem('currentUser');
+            if (storedUser) {
+                state.currentUser = JSON.parse(storedUser);
+                elements.userName.textContent = state.currentUser.name || state.currentUser.email.split('@')[0];
+                elements.logoutButton.classList.remove('hidden');
+            }
+            
+            const storedProjects = localStorage.getItem('projects');
+            if (storedProjects) {
+                state.projects = JSON.parse(storedProjects);
+                renderProjectsList();
+            }
+            
+            // Default users for demo purposes
+            if (localStorage.getItem('users') === null) {
+                state.users = [
+                    { id: '1', name: 'John Doe', email: 'john@example.com', password: '123456' },
+                    { id: '2', name: 'Jane Smith', email: 'jane@example.com', password: '123456' }
+                ];
+                localStorage.setItem('users', JSON.stringify(state.users));
+            } else {
+                state.users = JSON.parse(localStorage.getItem('users'));
+            }
+        }
+
+        // Save data to localStorage
+        function saveData() {
+            localStorage.setItem('currentUser', JSON.stringify(state.currentUser));
+            localStorage.setItem('projects', JSON.stringify(state.projects));
+            localStorage.setItem('users', JSON.stringify(state.users));
+        }
+
+        // Setup all event listeners
+        function setupEventListeners() {
+            // Auth events
+            elements.authSwitch.addEventListener('click', toggleAuthMode);
+            elements.authClose.addEventListener('click', () => elements.authContainer.classList.add('hidden'));
+            elements.authForm.addEventListener('submit', handleAuthSubmit);
+            
+            // Sidebar toggle
+            elements.sidebarToggle.addEventListener('click', () => {
+                elements.sidebar.classList.toggle('-translate-x-full');
+            });
+            
+            // Project events
+            elements.newProjectButton.addEventListener('click', () => {
+                elements.projectModal.classList.remove('hidden');
+                elements.projectName.focus();
+            });
+            
+            elements.projectModalClose.addEventListener('click', () => elements.projectModal.classList.add('hidden'));
+            elements.projectCancel.addEventListener('click', () => elements.projectModal.classList.add('hidden'));
+            elements.projectForm.addEventListener('submit', handleProjectSubmit);
+            elements.projectTeam.addEventListener('change', (e) => {
+                elements.projectTeamMembers.classList.toggle('hidden', !e.target.checked);
+            });
+            
+            elements.addMemberButton.addEventListener('click', () => {
+                const email = elements.teamMemberEmail.value.trim();
+                if (!email) return;
+                
+                const user = state.users.find(u => u.email === email);
+                if (!user) {
+                    showToast('User not found with that email');
+                    return;
+                }
+                
+                const memberItem = document.createElement('div');
+                memberItem.className = 'flex items-center justify-between p-2 bg-gray-50 rounded-md';
+                memberItem.innerHTML = `
+                    <div class="flex items-center">
+                        <img src="https://placehold.co/24x24" alt="${user.name}'s profile picture" class="h-6 w-6 rounded-full">
+                        <span class="ml-2 text-sm">${user.name}</span>
+                    </div>
+                    <button class="text-gray-400 hover:text-gray-600" data-email="${email}">
+                        <i class="fas fa-times"></i>
+                    </button>
+                `;
+                
+                elements.teamMembersList.appendChild(memberItem);
+                elements.teamMemberEmail.value = '';
+                
+                // Add remove event
+                memberItem.querySelector('button').addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    memberItem.remove();
+                });
+            });
+            
+            elements.createFirstProject.addEventListener('click', () => {
+                elements.projectModal.classList.remove('hidden');
+                elements.projectName.focus();
+            });
+            
+            // Task modal events
+            elements.taskModalClose.addEventListener('click', () => elements.taskModal.classList.add('hidden'));
+            elements.commentSubmit.addEventListener('click', addComment);
+            elements.commentInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') addComment();
+            });
+            elements.saveTaskButton.addEventListener('click', saveTask);
+            elements.deleteTaskButton.addEventListener('click', deleteTask);
+            
+            elements.taskAssigneeSearch.addEventListener('input', (e) => {
+                const query = e.target.value.toLowerCase();
+                if (!query) {
+                    elements.assigneeResults.classList.add('hidden');
+                    return;
+                }
+                
+                const results = state.users.filter(user => 
+                    user.name.toLowerCase().includes(query) || 
+                    user.email.toLowerCase().includes(query)
+                );
+                
+                renderAssigneeResults(results);
+            });
+            
+            elements.newLabelInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter' && e.target.value.trim()) {
+                    addLabel(e.target.value.trim());
+                    e.target.value = '';
+                }
+            });
+            
+            // Invite modal events
+            elements.inviteButton.addEventListener('click', () => {
+                elements.inviteModal.classList.remove('hidden');
+            });
+            
+            elements.inviteModalClose.addEventListener('click', () => elements.inviteModal.classList.add('hidden'));
+            
+            // Toast events
+            elements.toastClose.addEventListener('click', () => elements.toast.classList.add('hidden'));
+        }
+
+        // Toggle between login and signup modes
+        function toggleAuthMode() {
+            state.isLoggingIn = !state.isLoggingIn;
+            
+            if (state.isLoggingIn) {
+                elements.authTitle.textContent = 'Login';
+                elements.authSubmit.textContent = 'Login';
+                elements.authSwitchText.textContent = "Don't have an account?";
+                elements.authSwitch.textContent = 'Sign up';
+                elements.authNameGroup.classList.add('hidden');
+                elements.authConfirmGroup.classList.add('hidden');
+            } else {
+                elements.authTitle.textContent = 'Sign Up';
+                elements.authSubmit.textContent = 'Sign Up';
+                elements.authSwitchText.textContent = 'Already have an account?';
+                elements.authSwitch.textContent = 'Login';
+                elements.authNameGroup.classList.remove('hidden');
+                elements.authConfirmGroup.classList.remove('hidden');
+            }
+        }
+
+        // Show auth modal
+        function showAuthModal() {
+            elements.authContainer.classList.remove('hidden');
+            elements.appContainer.classList.add('hidden');
+        }
+
+        // Handle auth form submission
+        function handleAuthSubmit(e) {
+            e.preventDefault();
+            
+            const email = elements.authEmail.value.trim();
+            const password = elements.authPassword.value.trim();
+            
+            if (!email || !password) {
+                showToast('Please fill in all fields');
+                return;
+            }
+            
+            if (!state.isLoggingIn) {
+                const name = elements.authName.value.trim();
+                const confirm = elements.authConfirm.value.trim();
+                
+                if (!name || !confirm) {
+                    showToast('Please fill in all fields');
+                    return;
+                }
+                
+                if (password !== confirm) {
+                    showToast('Passwords do not match');
+                    return;
+                }
+                
+                // Check if user already exists
+                if (state.users.some(user => user.email === email)) {
+                    showToast('User already exists with that email');
+                    return;
+                }
+                
+                // Create new user
+                const newUser = {
+                    id: Date.now().toString(),
+                    name,
+                    email,
+                    password
+                };
+                
+                state.users.push(newUser);
+                state.currentUser = newUser;
+                
+                saveData();
+                showToast('Account created successfully!');
+                elements.authContainer.classList.add('hidden');
+                elements.appContainer.classList.remove('hidden');
+                elements.userName.textContent = name;
+                elements.logoutButton.classList.remove('hidden');
+            } else {
+                // Login logic
+                const user = state.users.find(user => user.email === email && user.password === password);
+                
+                if (!user) {
+                    showToast('Invalid email or password');
+                    return;
+                }
+                
+                state.currentUser = user;
+                saveData();
+                elements.authContainer.classList.add('hidden');
+                elements.appContainer.classList.remove('hidden');
+                elements.userName.textContent = user.name || user.email.split('@')[0];
+                elements.logoutButton.classList.remove('hidden');
+            }
+        }
+
+        // Handle project form submission
+        function handleProjectSubmit(e) {
+            e.preventDefault();
+            
+            const name = elements.projectName.value.trim();
+            if (!name) {
+                showToast('Project name is required');
+                return;
+            }
+            
+            const newProject = {
+                id: Date.now().toString(),
+                name,
+                description: elements.projectDescription.value.trim(),
+                columns: [
+                    { id: '1', name: 'To Do', color: 'gray', tasks: [] },
+                    { id: '2', name: 'In Progress', color: 'blue', tasks: [] },
+                    { id: '3', name: 'Review', color: 'yellow', tasks: [] },
+                    { id: '4', name: 'Done', color: 'green', tasks: [] }
+                ],
+                members: [state.currentUser]
+            };
+            
+            // Add team members if team project
+            if (elements.projectTeam.checked) {
+                const memberButtons = elements.teamMembersList.querySelectorAll('button');
+                memberButtons.forEach(button => {
+                    const email = button.dataset.email;
+                    const user = state.users.find(u => u.email === email);
+                    if (user) {
+                        newProject.members.push(user);
+                    }
+                });
+            }
+            
+            state.projects.push(newProject);
+            saveData();
+            renderProjectsList();
+            elements.projectModal.classList.add('hidden');
+            elements.projectForm.reset();
+            elements.teamMembersList.innerHTML = '';
+            
+            showToast('Project created successfully!');
+        }
+
+        // Render projects list in sidebar
+        function renderProjectsList() {
+            elements.projectsList.innerHTML = '';
+            
+            if (state.projects.length === 0) {
+                const emptyItem = document.createElement('li');
+                emptyItem.className = 'text-center py-4 text-gray-500';
+                emptyItem.textContent = 'No projects yet';
+                elements.projectsList.appendChild(emptyItem);
+                return;
+            }
+            
+            state.projects.forEach(project => {
+                const projectItem = document.createElement('li');
+                projectItem.className = 'mb-1';
+                
+                const projectButton = document.createElement('button');
+                projectButton.className = 'w-full text-left px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-100 flex items-center';
+                projectButton.innerHTML = `
+                    <span class="w-3 h-3 rounded-full bg-indigo-500 mr-2"></span>
+                    <span>${project.name}</span>
+                `;
+                
+                projectButton.addEventListener('click', () => {
+                    selectProject(project.id);
+                });
+                
+                projectItem.appendChild(projectButton);
+                elements.projectsList.appendChild(projectItem);
+            });
+        }
+
+        // Select and display a project
+        function selectProject(projectId) {
+            state.currentProject = state.projects.find(p => p.id === projectId);
+            if (!state.currentProject) return;
+            
+            elements.currentProjectName.textContent = state.currentProject.name;
+            elements.currentProjectDescription.textContent = state.currentProject.description || '';
+            elements.emptyState.classList.add('hidden');
+            elements.inviteButton.classList.remove('hidden');
+            elements.settingsButton.classList.remove('hidden');
+            
+            renderBoard();
+        }
+
+        // Render the board columns and tasks
+        function renderBoard() {
+            if (!state.currentProject) return;
+            
+            elements.boardColumns.innerHTML = '';
+            
+            state.currentProject.columns.forEach(column => {
+                const columnElement = document.createElement('div');
+                columnElement.className = 'flex-1 min-w-64';
+                columnElement.innerHTML = `
+                    <div class="bg-white rounded-lg shadow-sm overflow-hidden mb-4">
+                        <div class="px-4 py-3 border-b border-gray-200 bg-${column.color}-50">
+                            <div class="flex items-center justify-between">
+                                <h3 class="text-sm font-medium text-${column.color}-800">
+                                    ${column.name}
+                                </h3>
+                                <span class="text-xs font-medium text-${column.color}-800 bg-${column.color}-100 px-2 py-0.5 rounded-full">
+                                    ${column.tasks.length}
+                                </span>
+                            </div>
+                        </div>
+                        
+                        <div class="p-2" id="column-${column.id}">
+                            ${column.tasks.length === 0 ? `
+                                <div class="text-center py-6 text-gray-400">
+                                    <i class="fas fa-tasks mb-2"></i>
+                                    <p class="text-xs">No tasks</p>
+                                </div>
+                            ` : ''}
+                        </div>
+                        
+                        <div class="px-2 pb-3">
+                            <button class="w-full text-sm text-gray-500 hover:text-gray-700 py-1.5 px-2 rounded hover:bg-gray-50 add-task-button" data-column="${column.id}">
+                                <i class="fas fa-plus mr-2"></i> Add Task
+                            </button>
+                        </div>
+                    </div>
+                `;
+                
+                elements.boardColumns.appendChild(columnElement);
+                
+                // Render tasks for this column
+                renderColumnTasks(column);
+                
+                // Add event listener for add task button
+                columnElement.querySelector(`.add-task-button`).addEventListener('click', (e) => {
+                    addTaskToColumn(e.target.dataset.column);
+                });
+            });
+        }
+
+        // Render tasks in a column
+        function renderColumnTasks(column) {
+            const columnElement = document.getElementById(`column-${column.id}`);
+            if (!columnElement) return;
+            
+            // Clear existing tasks (except the empty state if it exists)
+            const addTaskButton = columnElement.nextElementSibling.querySelector('.add-task-button');
+            columnElement.innerHTML = '';
+            
+            if (column.tasks.length === 0) {
+                columnElement.innerHTML = `
+                    <div class="text-center py-6 text-gray-400">
+                        <i class="fas fa-tasks mb-2"></i>
+                        <p class="text-xs">No tasks</p>
+                    </div>
+                `;
+            } else {
+                column.tasks.forEach(task => {
+                    const taskElement = document.createElement('div');
+                    taskElement.className = 'mb-2';
+                    taskElement.innerHTML = `
+                        <div class="task-card bg-white p-3 rounded-md shadow border border-gray-200 cursor-pointer" data-task-id="${task.id}">
+                            <div class="flex justify-between items-start">
+                                <h4 class="font-medium text-gray-800">${task.title}</h4>
+                                <div class="flex space-x-1">
+                                    ${task.labels && task.labels.length > 0 ? task.labels.map(label => `
+                                        <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium ${getLabelColorClass(label)}">
+                                            ${label}
+                                        </span>
+                                    `).join('') : ''}
+                                </div>
+                            </div>
+                            
+                            <div class="mt-2 flex items-center justify-between text-xs text-gray-500">
+                                <div class="flex items-center">
+                                    <img src="https://placehold.co/16x16" alt="Assignee profile picture" class="h-4 w-4 rounded-full mr-1">
+                                    <span>${task.assignee ? task.assignee.name.split(' ')[0] : 'Unassigned'}</span>
+                                </div>
+                                ${task.dueDate ? `<span class="text-${isOverdue(task.dueDate) ? 'red' : 'gray'}-500">${formatDate(task.dueDate)}</span>` : ''}
+                            </div>
+                        </div>
+                    `;
+                    
+                    taskElement.querySelector('.task-card').addEventListener('click', () => {
+                        openTaskModal(task.id, column.id);
+                    });
+                    
+                    columnElement.appendChild(taskElement);
+                });
+            }
+            
+            // Re-add the add task button container
+            if (!addTaskButton.closest('div').isConnected) {
+                const buttonContainer = document.createElement('div');
+                buttonContainer.className = 'px-2 pb-3';
+                buttonContainer.innerHTML = `
+                    <button class="w-full text-sm text-gray-500 hover:text-gray-700 py-1.5 px-2 rounded hover:bg-gray-50 add-task-button" data-column="${column.id}">
+                        <i class="fas fa-plus mr-2"></i> Add Task
+                    </button>
+                `;
+                
+                buttonContainer.querySelector('.add-task-button').addEventListener('click', (e) => {
+                    addTaskToColumn(e.target.dataset.column);
+                });
+                
+                columnElement.parentNode.appendChild(buttonContainer);
+            }
+        }
+
+        // Add a new task to a column
+        function addTaskToColumn(columnId) {
+            if (!state.currentProject || !columnId) return;
+            
+            const column = state.currentProject.columns.find(col => col.id === columnId);
+            if (!column) return;
+            
+            const newTask = {
+                id: Date.now().toString(),
+                title: 'New Task',
+                description: '',
+                status: column.name.toLowerCase(),
+                dueDate: '',
+                assignee: null,
+                labels: [],
+                comments: []
+            };
+            
+            column.tasks.push(newTask);
+            saveData();
+            renderColumnTasks(column);
+            openTaskModal(newTask.id, columnId);
+        }
+
+        // Open task modal for viewing/editing
+        function openTaskModal(taskId, columnId) {
+            if (!state.currentProject || !taskId) return;
+            
+            const column = state.currentProject.columns.find(col => col.id === columnId);
+            if (!column) return;
+            
+            const task = column.tasks.find(t => t.id === taskId);
+            if (!task) return;
+            
+            state.currentTask = task;
+            state.currentColumnId = columnId;
+            
+            // Populate modal fields
+            elements.taskTitle.value = task.title;
+            elements.taskDescription.value = task.description || '';
+            elements.taskStatus.value = task.status;
+            elements.taskDueDate.value = task.dueDate || '';
+            
+            // Set status badge
+            elements.taskStatusBadge.className = 'px-2 py-1 text-xs font-medium rounded-full ' + getStatusBadgeClass(task.status);
+            elements.taskStatusBadge.textContent = formatStatus(task.status);
+            
+            // Set assignee if exists
+            if (task.assignee) {
+                elements.currentAssignee.classList.remove('hidden');
+                elements.assigneeName.textContent = task.assignee.name;
+            } else {
+                elements.currentAssignee.classList.add('hidden');
+            }
+            
+            // Render labels
+            renderLabels(task.labels || []);
+            
+            // Render comments
+            renderComments(task.comments || []);
+            
+            elements.taskModal.classList.remove('hidden');
+        }
+
+        // Save task changes
+        function saveTask() {
+            if (!state.currentTask || !state.currentProject || !state.currentColumnId) return;
+            
+            const column = state.currentProject.columns.find(col => col.id === state.currentColumnId);
+            if (!column) return;
+            
+            const task = column.tasks.find(t => t.id === state.currentTask.id);
+            if (!task) return;
+            
+            // Update task properties
+            task.title = elements.taskTitle.value;
+            task.description = elements.taskDescription.value;
+            task.status = elements.taskStatus.value;
+            task.dueDate = elements.taskDueDate.value;
+            
+            saveData();
+            
+            // Re-render the column to reflect changes
+            renderColumnTasks(column);
+            
+            showToast('Task saved successfully!');
+        }
+
+        // Delete current task
+        function deleteTask() {
+            if (!state.currentTask || !state.currentProject || !state.currentColumnId) return;
+            
+            const column = state.currentProject.columns.find(col => col.id === state.currentColumnId);
+            if (!column) return;
+            
+            column.tasks = column.tasks.filter(t => t.id !== state.currentTask.id);
+            saveData();
+            
+            // Re-render the column to reflect changes
+            renderColumnTasks(column);
+            
+            elements.taskModal.classList.add('hidden');
+            showToast('Task deleted successfully!');
+        }
+
+        // Add comment to current task
+        function addComment() {
+            const text = elements.commentInput.value.trim();
+            if (!text || !state.currentTask) return;
+            
+            if (!state.currentTask.comments) {
+                state.currentTask.comments = [];
+            }
+            
+            const newComment = {
+                id: Date.now().toString(),
+                text,
+                author: state.currentUser,
+                createdAt: new Date().toISOString()
+            };
+            
+            state.currentTask.comments.unshift(newComment);
+            elements.commentInput.value = '';
+            
+            saveData();
+            renderComments(state.currentTask.comments);
+        }
+
+        // Render comments in task modal
+        function renderComments(comments) {
+            elements.commentsContainer.innerHTML = '';
+            
+            if (comments.length === 0) {
+                elements.commentsContainer.innerHTML = '<p class="text-sm text-gray-500 text-center py-4">No comments yet</p>';
+                return;
+            }
+            
+            comments.forEach(comment => {
+                const commentElement = document.createElement('div');
+                commentElement.className = 'bg-gray-50 rounded-lg p-3';
+                commentElement.innerHTML = `
+                    <div class="flex items-start space-x-2">
+                        <img src="https://placehold.co/32x32" alt="${comment.author.name}'s profile picture" class="h-6 w-6 rounded-full mt-1">
+                        <div class="flex-1">
+                            <div class="flex items-center justify-between">
+                                <span class="text-xs font-medium">${comment.author.name}</span>
+                                <span class="text-xs text-gray-500">${formatRelativeTime(comment.createdAt)}</span>
+                            </div>
+                            <p class="text-sm mt-1">${comment.text}</p>
+                        </div>
+                    </div>
+                `;
+                
+                elements.commentsContainer.appendChild(commentElement);
+            });
+        }
+
+        // Render labels in task modal
+        function renderLabels(labels) {
+            elements.taskLabels.innerHTML = '';
+            
+            labels.forEach(label => {
+                const labelElement = document.createElement('span');
+                labelElement.className = 'inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ' + getLabelColorClass(label);
+                labelElement.textContent = label;
+                
+                // Add remove functionality
+                labelElement.addEventListener('click', () => {
+                    state.currentTask.labels = state.currentTask.labels.filter(l => l !== label);
+                    saveData();
+                    renderLabels(state.currentTask.labels);
+                });
+                
+                elements.taskLabels.appendChild(labelElement);
+            });
+        }
+
+        // Add new label to task
+        function addLabel(labelText) {
+            if (!state.currentTask || !labelText) return;
+            
+            if (!state.currentTask.labels) {
+                state.currentTask.labels = [];
+            }
+            
+            if (!state.currentTask.labels.includes(labelText)) {
+                state.currentTask.labels.push(labelText);
+                saveData();
+                renderLabels(state.currentTask.labels);
+            }
+        }
+
+        // Render assignee search results
+        function renderAssigneeResults(results) {
+            elements.assigneeResults.innerHTML = '';
+            
+            if (results.length === 0) {
+                elements.assigneeResults.innerHTML = '<div class="px-4 py-2 text-sm text-gray-500">No users found</div>';
+                elements.assigneeResults.classList.remove('hidden');
+                return;
+            }
+            
+            results.forEach(user => {
+                const resultItem = document.createElement('div');
+                resultItem.className = 'px-4 py-2 cursor-pointer hover:bg-gray-50';
+                resultItem.innerHTML = `
+                    <div class="flex items-center">
+                        <img src="https://placehold.co/24x24" alt="${user.name}'s profile picture" class="h-5 w-5 rounded-full mr-2">
+                        <span class="text-sm">${user.name}</span>
+                    </div>
+                `;
+                
+                resultItem.addEventListener('click', () => {
+                    state.currentTask.assignee = user;
+                    saveData();
+                    
+                    elements.currentAssignee.classList.remove('hidden');
+                    elements.assigneeName.textContent = user.name;
+                    elements.taskAssigneeSearch.value = '';
+                    elements.assigneeResults.classList.add('hidden');
+                });
+                
+                elements.assigneeResults.appendChild(resultItem);
+            });
+            
+            elements.assigneeResults.classList.remove('hidden');
+        }
+
+        // Helper functions
+        function formatDate(dateString) {
+            if (!dateString) return '';
+            const date = new Date(dateString);
+            return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        }
+
+        function formatRelativeTime(dateString) {
+            const now = new Date();
+            const date = new Date(dateString);
+            const diffInSeconds = Math.floor((now - date) / 1000);
+            
+            if (diffInSeconds < 60) return 'just now';
+            if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
+            if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
+            return `${Math.floor(diffInSeconds / 86400)}d ago`;
+        }
+
+        function formatStatus(status) {
+            return status.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+        }
+
+        function getStatusBadgeClass(status) {
+            switch (status) {
+                case 'todo': return 'bg-gray-100 text-gray-800';
+                case 'in-progress': return 'bg-blue-100 text-blue-800';
+                case 'review': return 'bg-yellow-100 text-yellow-800';
+                case 'done': return 'bg-green-100 text-green-800';
+                default: return 'bg-gray-100 text-gray-800';
+            }
+        }
+
+        function getLabelColorClass(label) {
+            const colors = [
+                'bg-indigo-100 text-indigo-800',
+                'bg-green-100 text-green-800',
+                'bg-yellow-100 text-yellow-800',
+                'bg-red-100 text-red-800',
+                'bg-purple-100 text-purple-800',
+                'bg-pink-100 text-pink-800',
+                'bg-blue-100 text-blue-800'
+            ];
+            
+            const hash = label.split('').reduce((acc, char) => char.charCodeAt(0) + acc, 0);
+            return colors[hash % colors.length];
+        }
+
+        function isOverdue(dateString) {
+            if (!dateString) return false;
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const dueDate = new Date(dateString);
+            return dueDate < today;
+        }
+
+        function showToast(message) {
+            elements.toastMessage.textContent = message;
+            elements.toast.classList.remove('hidden');
+            
+            setTimeout(() => {
+                elements.toast.classList.add('hidden');
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
